@@ -50,7 +50,8 @@ rename_target = {
     '2014 UN271': 'C/2014 UN271',
     'c/2014 UN271': 'C/2014 UN271',
     'P/2016 J3': '414P',
-    'A/2019 U5': 'C/2019 U5'
+    'A/2019 U5': 'C/2019 U5',
+    'C/2018 F4': 'C/2018 F4-A'
 }
 
 target_names = {
@@ -58,6 +59,8 @@ target_names = {
     'C/2014 UN271': 'C/2014 UN271 (Bernardinelli-Bernstein)',
     'C/2017 K2': 'C/2017 K2 (PanSTARRS)',
     'C/2018 F4': 'C/2018 F4 (PanSTARRS)',
+    'C/2018 F4-A': 'C/2018 F4-A (PanSTARRS)',
+    'C/2018 F4-B': 'C/2018 F4-B (PanSTARRS)',
     'C/2019 F1': 'C/2019 F1 (ATLAS-Africano)',
     'C/2019 L3': 'C/2019 L3 (ATLAS)',
     'C/2019 U6': 'C/2019 U6 (Lemmon)',
@@ -97,4 +100,4 @@ locations = {  # approximate
 
 
 def target_to_filename(target):
-    return target.lower().replace('/', '').replace(' ', '')
+    return target.lower().replace('/', '').replace(' ', '').replace('-', '')

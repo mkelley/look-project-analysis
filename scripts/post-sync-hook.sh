@@ -2,7 +2,7 @@
 source /home/msk/lco/.venv/bin/activate
 cd /oort/msk/lco/look
 python3 phot.py
-for target in 2005qn173 29p c2014un271 382p 57p 97p; do
+for target in 2005qn173 29p c2014un271 382p 57p 97p 67p 191p; do
     PYTHONPATH=. python3 look-project-analysis/figures/plot-${target}.py
 done
 #python3 summarize-for-web.py
@@ -25,6 +25,8 @@ rsync 29p-look.png\
       382p-look.png\
       57p-look.png\
       97p-look.png\
+      191p-look.png\
+      67p-look.png\
       7p-look-20210710-outburst.gif\
       /home/msk/public_html/look/plots/
 

@@ -26,6 +26,9 @@ parser.add_argument('--date', help='only stack on this UT date')
 parser.add_argument('--cluster-dt', type=float, default=1,
                     help='distance threshold for clustering (hours)')
 parser.add_argument('--filter', help='only stack this filter')
+parser.add_argument('--force', '-f', action='store_true', help='overwrite existing images')
+parser.add_argument('--size', '-s', default=1000, type=int, help='image dimensions')
+parser.add_argument('-v', action='store_true', help='vebose mose')
 args = parser.parse_args()
 
 warnings.simplefilter(
@@ -40,7 +43,7 @@ phot.sort(('target', 'site', 'filter'))
 targets = set(phot['target']) if args.target is None else [args.target]
 filters = set(phot['filter']) if args.filter is None else [args.filter]
 
-shape = np.array((1000, 1000))
+shape = np.array((args.size, args.size))
 
 
 def grouper(row):
@@ -48,7 +51,7 @@ def grouper(row):
 
 
 for (target, site, filter), group in groupby(phot, grouper):
-    if target not in targets or filter not in filters:
+    if (target not in targets) or (filter not in filters):
         continue
 
     group = vstack(list(group))
@@ -76,8 +79,11 @@ for (target, site, filter), group in groupby(phot, grouper):
         date_fn = date.isot.replace('-', '').replace(':', '')[:13]
         prefix = f"stacks/{target_fn}/{target_fn}_{date_fn}_{cluster['rh'].mean():.3f}au_{filter}_look"
 
-        if all([os.path.exists(f'{prefix}_{label}.fits') for label in ('avg', 'med')]):
+        if all([os.path.exists(f'{prefix}_{label}.fits') for label in ('avg', 'med')]) and not args.force:
             continue
+
+        if args.v:
+            print(prefix)
 
         # create WCS objects in the comet's rest frame for each image and the stacked image
         opts = dict(epochs=dates, location=locations[site[:3]])
