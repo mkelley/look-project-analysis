@@ -158,7 +158,10 @@ for (target, site, filter), group in groupby(phot, grouper):
         combiner = Combiner(stack)
 
         avg = combiner.average_combine().data
-        med = combiner.median_combine().data
+        if len(stack) > 2:
+            med = combiner.median_combine().data
+        else:
+            med = None
 
         hdu = wcs0.to_fits()
         hdu[0].header['target'] = target
@@ -195,6 +198,8 @@ for (target, site, filter), group in groupby(phot, grouper):
                                          for f in cluster['file']]))
 
         for im, label in zip((avg, med), ('avg', 'med')):
+            if im is None:
+                continue
             hdu[0].header['combfunc'] = label, 'combination function'
             hdu[0].data = im.astype(np.float32)
             hdu.writeto(f'{prefix}_{label}.fits', overwrite=True)
