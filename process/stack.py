@@ -158,7 +158,7 @@ for (target, site, filter), group in groupby(phot, grouper):
         combiner = Combiner(stack)
 
         avg = combiner.average_combine().data
-        if len(stack) > 2:
+        if len(stack.data) > 2:
             med = combiner.median_combine().data
         else:
             med = None
