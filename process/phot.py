@@ -34,7 +34,8 @@ parser.add_argument('files', nargs='*', help='measure these files')
 parser.add_argument('-f', '--force', action='store_true',
                     help='re-measure and overwrite existing data')
 parser.add_argument('--debug', action='store_true',
-                    help='enable debugging messages')
+                    help='enable debugging messages for the screen')
+parser.add_argument('-q', action='store_true', help='quiet mode, reduces messages on the screen')
 args = parser.parse_args()
 
 if not args.debug:
@@ -43,10 +44,15 @@ if not args.debug:
 
 logger = logging.getLogger('lco-phot')
 if len(logger.handlers) == 0:
-    logger.setLevel(logging.DEBUG)
     handler = logging.StreamHandler()
-    handler.setLevel(logging.WARNING)
+    if args.q:
+        handler.setLevel(logging.WARNING)
+    elif args.debug:
+        handler.setLevel(logging.DEBUG)
+    else:
+        handler.setLevel(logging.INFO)
     logger.addHandler(handler)
+
     handler = logging.FileHandler('phot.log')
     handler.setLevel(logging.DEBUG)
     logger.addHandler(handler)

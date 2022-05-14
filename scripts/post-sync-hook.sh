@@ -1,12 +1,12 @@
 #!/bin/bash -eu
 source /home/msk/lco/.venv/bin/activate
 cd /oort/msk/lco/look
-python3 phot.py
+python3 phot.py -q
 for target in 2005qn173 29p c2014un271 382p 57p 97p 67p 191p; do
     PYTHONPATH=. python3 look-project-analysis/figures/plot-${target}.py
 done
 #python3 summarize-for-web.py
-python3 stack.py
+python3 stack.py -q
 cp -f avg-colors.txt\
    c2014un271-look-phot-binned.txt\
    colors.txt\

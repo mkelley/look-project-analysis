@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import os
-#import logging
+import logging
 import argparse
 import warnings
 from itertools import groupby
@@ -28,11 +28,15 @@ parser.add_argument('--cluster-dt', type=float, default=1,
 parser.add_argument('--filter', help='only stack this filter')
 parser.add_argument('--force', '-f', action='store_true', help='overwrite existing images')
 parser.add_argument('--size', '-s', default=1000, type=int, help='image dimensions')
-parser.add_argument('-v', action='store_true', help='vebose mose')
+parser.add_argument('-v', action='store_true', help='verbose mode')
+parser.add_argument('-q', action='store_true', help='quiet mode')
 args = parser.parse_args()
 
 warnings.simplefilter(
     'ignore', (UserWarning, FITSFixedWarning, TimeScaleWarning))
+
+level = (2 + int(args.q) - int(args.v)) * 10
+logging.basicConfig(level=level)
 
 phot = ascii.read('phot.txt')
 phot['mjd'] = Time(phot['date']).mjd
@@ -82,8 +86,7 @@ for (target, site, filter), group in groupby(phot, grouper):
         if all([os.path.exists(f'{prefix}_{label}.fits') for label in ('avg', 'med')]) and not args.force:
             continue
 
-        if args.v:
-            print(prefix)
+        logging.debug(prefix)
 
         # create WCS objects in the comet's rest frame for each image and the stacked image
         opts = dict(epochs=dates, location=locations[site[:3]])
