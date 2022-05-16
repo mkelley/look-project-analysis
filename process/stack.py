@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import os
+import json
 import logging
 import argparse
 import warnings
@@ -25,9 +26,13 @@ parser.add_argument('--target', help='only stack this target')
 parser.add_argument('--date', help='only stack on this UT date')
 parser.add_argument('--cluster-dt', type=float, default=1,
                     help='distance threshold for clustering (hours)')
+parser.add_argument('--cluster-file', default='stack-clusters.json',
+                    help='save cluster associations to this file')
 parser.add_argument('--filter', help='only stack this filter')
-parser.add_argument('--force', '-f', action='store_true', help='overwrite existing images')
-parser.add_argument('--size', '-s', default=1000, type=int, help='image dimensions')
+parser.add_argument('--force', '-f', action='store_true',
+                    help='overwrite existing images')
+parser.add_argument('--size', '-s', default=7, type=int,
+                    help='image dimensions, arcmin')
 parser.add_argument('-v', action='store_true', help='verbose mode')
 parser.add_argument('-q', action='store_true', help='quiet mode')
 args = parser.parse_args()
@@ -47,8 +52,13 @@ phot.sort(('target', 'site', 'filter'))
 targets = set(phot['target']) if args.target is None else [args.target]
 filters = set(phot['filter']) if args.filter is None else [args.filter]
 
-shape = np.array((args.size, args.size))
+shape = np.array((int(args.size * 60 / 0.39), int(args.size * 60 / 0.39)))
 
+associations = {}
+if os.path.exists(args.cluster_file):
+    with open(args.cluster_file, 'r') as inf:
+        associations = json.load(inf)
+    os.system(f'cp -f "{args.cluster_file}" "{args.cluster_file}.backup"')
 
 def grouper(row):
     return (row['target'], row['site'], row['filter'])
@@ -88,6 +98,15 @@ for (target, site, filter), group in groupby(phot, grouper):
 
         logging.debug(prefix)
 
+        # were these files already in a stack?  delete the stack and revise the associations
+        old_stacks = set()
+        for f in cluster['file']:
+            if f in associations:
+                old_stacks = old_stacks.union(associations[f])
+                del associations[f]
+        for old_stack in old_stacks:
+            os.unlink(old_stack)
+
         # create WCS objects in the comet's rest frame for each image and the stacked image
         opts = dict(epochs=dates, location=locations[site[:3]])
         try:
@@ -123,7 +142,9 @@ for (target, site, filter), group in groupby(phot, grouper):
         # )) * 0.98
         # ps0 = u.Quantity(wcs[0].proj_plane_pixel_scales()).mean().value
         #wcs0.wcs.cdelt = -ps0, ps0
-        wcs0.wcs.cd = -wcs[0].wcs.cd
+        ps0 = (u.Quantity(wcs[0].proj_plane_pixel_scales())
+               .mean().to_value('arcsec'))
+        wcs0.wcs.cd = -wcs[0].wcs.cd * 0.39 / ps0
         wcs0.wcs.dateobs = date.isot
         wcs0.wcs.mjdobs = date.mjd
         Omega0 = wcs0.proj_plane_pixel_area()
@@ -160,15 +181,19 @@ for (target, site, filter), group in groupby(phot, grouper):
         stack = CCDData(stack, unit='adu')
         combiner = Combiner(stack)
 
-        avg = combiner.average_combine().data
+        med = combiner.median_combine().data
         if len(stack.data) > 2:
-            med = combiner.median_combine().data
+            # median and average are the same for n = 2
+            avg = combiner.average_combine().data
         else:
-            med = None
+            avg = None
 
         hdu = wcs0.to_fits()
         hdu[0].header['target'] = target
         hdu[0].header['site'] = site
+        hdu[0].header['startmjd'] = (dates - cluster['exptime'] * u.s).min().mjd
+        hdu[0].header['midmjd'] = date.mjd
+        hdu[0].header['stopmjd'] = (dates + cluster['exptime'] * u.s).max().mjd
         hdu[0].header['filter'] = filter, 'observation filter'
         hdu[0].header['calfilt'] = filter_to_ps1[filter], 'data is calibrated to this PS1 filter'
         hdu[0].header['gain'] = scale.mean()**-1, 'mean eff. gain per image'
@@ -200,9 +225,17 @@ for (target, site, filter), group in groupby(phot, grouper):
             'Files combined: {}'.format([os.path.basename(f)
                                          for f in cluster['file']]))
 
+        stack_files = []
         for im, label in zip((avg, med), ('avg', 'med')):
             if im is None:
                 continue
             hdu[0].header['combfunc'] = label, 'combination function'
             hdu[0].data = im.astype(np.float32)
-            hdu.writeto(f'{prefix}_{label}.fits', overwrite=True)
+            stack_files.append(f'{prefix}_{label}.fits')
+            hdu.writeto(stack_files[-1], overwrite=True)
+
+        # new files are written, update associations
+        for f in cluster['file']:
+            associations[f] = stack_files
+        with open(args.cluster_file, 'w') as outf:
+            json.dump(associations, outf)
