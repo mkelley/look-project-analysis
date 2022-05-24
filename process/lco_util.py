@@ -1,7 +1,5 @@
+import logging
 from collections import defaultdict
-import numpy as np
-from astropy.stats import sigma_clip
-from sbpy.activity import phase_HalleyMarcus
 
 __all__ = [
     'assumed_gmr',
@@ -11,6 +9,14 @@ __all__ = [
     'target_to_filename',
     'color_corrections'
 ]
+
+rho_arcsec = [2, 5, 10, 12, 20]
+rho_km = [5e3, 1e4, 2e4]
+rho_labels = (
+    [str(r) for r in rho_arcsec] +
+    ['{}k'.format(str(int(r // 1000))) for r in rho_km]
+)
+color_rho = '5'
 
 # color for color correction
 assumed_gmr = defaultdict(lambda: 0.55)
@@ -125,3 +131,18 @@ locations = {  # approximate
 
 def target_to_filename(target):
     return target.lower().replace('/', '').replace(' ', '').replace('-', '')
+
+
+def setup_logger(name, level):
+    logger = logging.getLogger(name)
+    [logger.removeHandler(h) for h in list(logger.handlers)]
+    logger.setLevel('DEBUG' if level == 'DEBUG' else 'INFO')
+    logger.addHandler(logging.FileHandler('look-project-analysis.log'))
+    h = logging.StreamHandler()
+    h.setLevel('INFO' if level is None else level)
+    logger.addHandler(h)
+    formatter = logging.Formatter(
+        '%(name)s : %(levelname)s : %(asctime)s : %(message)s')
+    for h in logger.handlers:
+        h.setFormatter(formatter)
+    return logger

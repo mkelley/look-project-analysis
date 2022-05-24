@@ -2,9 +2,7 @@
 import os
 from glob import glob
 import argparse
-import logging
 from collections import defaultdict
-from itertools import groupby
 import warnings
 from mskpy.image.core import rebin
 
@@ -16,46 +14,34 @@ from astropy import log as astropy_log
 from astropy.io import fits
 from astropy.io import ascii
 from astropy.time import Time
-from astropy.table import Table, vstack
+from astropy.table import Table
 from astropy.coordinates import SkyCoord
 from astropy.wcs import WCS, FITSFixedWarning
 import sep
 from sbpy.data import Ephem, Orbit, TimeScaleWarning
-from sbpy.activity import phase_HalleyMarcus
 
 from calviacat import RefCat2
 from mskpy import gcentroid
-from mskpy.photometry.outbursts import CometaryTrends
-from lco_util import *
+from lco_util import (rho_labels, rho_km, rho_arcsec, rename_target,
+                      locations, color_corrections, assumed_gmr, filters, setup_logger)
 
 parser = argparse.ArgumentParser(
     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('files', nargs='*', help='measure these files')
 parser.add_argument('-f', '--force', action='store_true',
                     help='re-measure and overwrite existing data')
-parser.add_argument('--debug', action='store_true',
-                    help='enable debugging messages for the screen')
-parser.add_argument('-q', action='store_true', help='quiet mode, reduces messages on the screen')
+parser.add_argument('-v', dest='level', action='store_const',
+                    const='DEBUG', help='verbose mode')
+parser.add_argument('-q', dest='level', action='store_const',
+                    const='WARNING', help='quiet mode')
 args = parser.parse_args()
 
-if not args.debug:
+if args.level != 'DEBUG':
     warnings.simplefilter('ignore', FITSFixedWarning)
     warnings.simplefilter('ignore', RuntimeWarning)
 
-logger = logging.getLogger('lco-phot')
-if len(logger.handlers) == 0:
-    handler = logging.StreamHandler()
-    if args.q:
-        handler.setLevel(logging.WARNING)
-    elif args.debug:
-        handler.setLevel(logging.DEBUG)
-    else:
-        handler.setLevel(logging.INFO)
-    logger.addHandler(handler)
-
-    handler = logging.FileHandler('phot.log')
-    handler.setLevel(logging.DEBUG)
-    logger.addHandler(handler)
+logger = setup_logger(__file__, args.level)
+logger.info('Start')
 
 # prevents logging of fitter warnings from calviacat
 astropy_log.setLevel('ERROR')
@@ -65,14 +51,6 @@ if not os.path.exists('zeropoints'):
 
 if not os.path.exists('backgrounds'):
     os.system('mkdir backgrounds')
-
-rho_arcsec = [2, 5, 10, 12, 20]
-rho_km = [5e3, 1e4, 2e4]
-rho_labels = (
-    [str(r) for r in rho_arcsec] +
-    ['{}k'.format(str(int(r // 1000))) for r in rho_km]
-)
-color_rho = '5'
 
 # skip_objects = ['C/2021 C4']  # not in horizons
 
@@ -186,7 +164,7 @@ for f in files:
         skip.write('phot-skip.list', format='ascii.csv',
                    overwrite=True)
         continue
-    
+
     phot = Table(hdu['cat'].data)
     if 'ra' not in phot.colnames:
         logger.error('Adding %s to skip file list: WCS probably missing.',
@@ -434,172 +412,9 @@ for f in files:
     tab.write('phot.txt', format='ascii.fixed_width_two_line',
               overwrite=True)
 
-# now bin the data
-
-
-def grouper(row):
-    # bin every time the target, site, or filter changes and when Δt >= 1 hr
-    return (row['target'], os.path.basename(row['file'])[:8], row['filter'], str(row['tbin']))
-
-
-# resort for better grouping
-tab.sort(('target', 'filter', 'file'))
-
-tab['tbin'] = np.cumsum(
-    np.r_[0, np.diff(Time(tab['date']).mjd * 24).astype(int)]
-)
-rows = []
-for source, group in groupby(tab, grouper):
-    g = vstack(list(group))
-    i = (g['merr5'] < 0.2) * np.isfinite(g['m5'])
-
-    # anything more than 3 pix away is probably bad
-    if len(g[i]) > 2:
-        # if there are more than 2 detections, use the median as a reference
-        cm = np.median(g['dc'][i])
-    else:
-        # otherwise use the ephemeris position
-        cm = 0
-    i = i * (np.abs(g['dc'].data - cm) < 3)
-
-    if not any(i):
-        continue
-
-    t = Time(g['date'][i])
-    jd = t.jd.mean()
-    fracday = t.mjd.mean() % 1
-    tmtp = g['tmtp'].mean()
-    rh = g['rh'][i].mean()
-    delta = g['delta'][i].mean()
-    phase = g['phase'][i].mean()
-    n = i.sum()
-    exptime = g['exptime'][i].sum()
-    airmass = g['airmass'][i].mean()
-    seeing = g['seeing'][i].mean()
-    rho10k = g['rho10k'][i].mean()
-    m = []
-    merr = []
-    for r in rho_labels:
-        _m, sw = np.average(
-            g['m{}'.format(r)][i],
-            weights=g['merr{}'.format(r)][i]**-2,
-            returned=True)
-        merr.append(sw**-0.5)
-        m.append(_m)
-
-    rows.append([source[0], source[1], Time(jd, format='jd').iso[:-4],
-                 fracday, tmtp, rh, delta, phase, source[2], g['catalog filter'][0],
-                 n, exptime, airmass, seeing, rho10k] + m + merr)
-
-del tab['tbin']
-
-
-names = ['target', 'source', 'date', 'fracday', 'tmtp', 'rh', 'delta',
-         'phase', 'filter', 'catalog filter', 'N exp', 'exptime',
-         'airmass', 'seeing', 'rho10k']
-names.extend(tab.colnames[-len(rho_labels) * 2:])
-binned = Table(rows=rows, names=names, meta=tab.meta)
-
-
-# color calculations and outburst search
-colors = []
-avg_colors = []
-ostat = np.zeros(len(binned))
-for target in set(binned['target']):
-    i = binned['target'] == target
-    # prev = binned[
-    #     (binned['target'] == row['target'])
-    #     #* (binned['filter'] == row['filter'])
-    #     #* (binned['tmtp'] < row['tmtp'])
-    #     #* (binned['tmtp'] > (row['tmtp'] - 14))
-    # ]
-    eph = Ephem.from_dict({
-        'date': Time(binned['date'][i]),
-        'rh': binned['rh'][i] * u.au,
-        'delta': binned['delta'][i] * u.au,
-        'phase': binned['phase'][i] * u.deg,
-    })
-    trend = CometaryTrends(eph, binned[f'm{color_rho}'][i] * u.mag,
-                           binned[f'merr{color_rho}'][i] * u.mag,
-                           filt=binned['catalog filter'][i],
-                           color_transform=True,
-                           logger=logger)
-
-    gmr = trend.color('g', 'r')
-    row = {
-        'target': target
-    }
-    if gmr is not None:
-        for j in range(len(gmr.c)):
-            colors.append({
-                'target': target,
-                'date': gmr.t[j].iso,
-                'filters': 'g-r',
-                'c': gmr.c[j],
-                'unc': gmr.c_unc[j]
-            })
-
-        row['n g-r'] = len(gmr.c)
-        row['g-r'] = gmr.avg
-        row['g-r unc'] = gmr.avg_unc
-
-    rmi = trend.color('r', 'i')
-    if rmi is not None:
-        for j in range(len(rmi.c)):
-            colors.append({
-                'target': target,
-                'date': rmi.t[j].iso,
-                'filters': 'r-i',
-                'c': rmi.c[j],
-                'unc': rmi.c_unc[j]
-            })
-
-        row['n r-i'] = len(rmi.c)
-        row['r-i'] = rmi.avg
-        row['r-i unc'] = rmi.avg_unc
-
-    if not (gmr is None and rmi is None):
-        avg_colors.append(row)
-
-    ostat[i] = trend.ostat(Phi=phase_HalleyMarcus, fixed_angular_size=True)
-
-binned['ostat'] = ostat
-
-colors = Table(colors)
-avg_colors = Table(avg_colors)
-for tab in (colors, avg_colors):
-    tab.meta['comments'] = [f'colors measured with radius = {color_rho}']
-colors.write('colors.txt', format='ascii.fixed_width_two_line',
-             overwrite=True)
-avg_colors.write('avg-colors.txt', format='ascii.fixed_width_two_line',
-                 overwrite=True)
-
-binned['fracday'].format = '{:.5f}'
-binned['tmtp'].format = '{:.3f}'
-binned['rh'].format = '{:.3f}'
-binned['delta'].format = '{:.3f}'
-binned['phase'].format = '{:.3f}'
-binned['exptime'].format = '{:.0f}'
-binned['airmass'].format = '{:.3f}'
-binned['seeing'].format = '{:.2f}'
-binned['rho10k'].format = '{:.2f}'
-binned['ostat'].format = '{:.1f}'
-for r in rho_labels:
-    binned['m{}'.format(r)].format = '{:.3f}'
-    binned['merr{}'.format(r)].format = '{:.3f}'
-
-binned.write('phot-binned.txt', format='ascii.fixed_width_two_line',
-             overwrite=True)
-binned.sort('date', reverse=True)
-binned.write('phot-binned-date-sort.txt', format='ascii.fixed_width_two_line',
-             overwrite=True)
-
-binned[binned['target'] == 'C/2014 UN271'].write(
-    'c2014un271-look-phot-binned.txt',
-    format='ascii.fixed_width_two_line',
-    overwrite=True)
-
 if len(new_objects) > 0:
     logger.info('New observations of %s', new_objects)
 else:
     logger.info('No new observations')
+
+logger.info('Finish')
