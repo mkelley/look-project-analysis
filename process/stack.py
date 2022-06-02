@@ -309,8 +309,8 @@ def main(args, logger):
 
         logger.debug('%s %s %s', target, site, filter)
 
-        # vstack too slow: group = vstack(list(group))
-        i = np.array(list(row.index for row in rows))
+        # this vstack is too slow: group = vstack(list(group))
+        i = np.array([row.index for row in rows])
         group = phot[i]
 
         target_fn = target_to_filename(target)
@@ -355,6 +355,7 @@ def main(args, logger):
                 # prefix than being considered here?  Delete the stack and
                 # revise the associations.
                 old_stacks = set()
+
                 for f in cluster['file']:
                     if f in associations:
                         old_stacks = old_stacks.union(associations[f])
@@ -370,7 +371,8 @@ def main(args, logger):
                             except FileNotFoundError:
                                 pass
                         existing_files.discard(old_stack)
-                    if old_stack in binned:
+                    old_stack_prefix = os.path.basename(old_stack)[:-9]
+                    if old_stack_prefix in binned:
                         del binned[old_stack]
 
                 if args.process:
