@@ -129,7 +129,17 @@ def stack_cluster(target, cluster, shape, site):
     wcs0.wcs.crpix = shape // 2
     ps0 = (u.Quantity(wcs[0].proj_plane_pixel_scales())
             .mean().to_value('arcsec'))
-    wcs0.wcs.cd = -wcs[0].wcs.cd * 0.39 / ps0
+    cd = wcs[0].wcs.cd * 0.39 / ps0
+
+    # align with N up, E left
+    # For E left:[0, 0] must be < 0
+    # For N up: [1, 1] must be > 0
+    if cd[0, 0] > 0:
+        cd[0, 0] *= -1
+    if cd[1, 1] < 0:
+        cd[1, 1] *= -1
+    wcs0.wcs.cd = cd
+
     wcs0.wcs.dateobs = date.isot
     wcs0.wcs.mjdobs = date.mjd
     Omega0 = wcs0.proj_plane_pixel_area()
@@ -158,7 +168,6 @@ def stack_cluster(target, cluster, shape, site):
         # stack.data[i], cov = reproject_adaptive((im0, wcs[i]), wcs0, shape,
         #                                     order='nearest-neighbor')
         # ...
-        # Currently not aligning with north and using "exact" (conserving flux)
         stack.data[i], cov = reproject_exact(
             (im0, wcs[i]), wcs0, shape, parallel=True)
         stack.mask[i] = cov == 0
