@@ -5,6 +5,7 @@ source /home/msk/lco/.venv/bin/activate
 cd /oort/msk/lco/look
 $LOGROTATE look-project-analysis/scripts/logrotate.config -s logrotate.state
 
+python3 file-summary.py &&\
 python3 phot.py -q &&\
 python3 stack.py -q &&\
 python3 color-and-ostat.py -q &&\
