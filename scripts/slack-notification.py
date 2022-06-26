@@ -55,7 +55,7 @@ args = parser.parse_args()
 logger = setup_logger('slack-notification',
                       'INFO' if args.verbose else 'WARNING')
 
-base_url = 'https://www.astro.umd.edu/~msk/look-browser'
+base_url = 'https://quick-look.mkelley.dev'
 user_post_url = os.getenv('LOOK_SLACK_USER_POST_URL')
 notifications_post_url = os.getenv('LOOK_SLACK_NOTIFICATIONS_POST_URL')
 
@@ -78,14 +78,14 @@ def format_message(interval):
                 {
                     "type": "section",
                     "text": {
-                        "text": f"*<{base_url}/|Quick LOOK Pipeline> daily summary*",
+                        "text": f"*<{base_url}/|Quick LOOK> daily summary*",
                         "type": "mrkdwn"
                     }
                 },
                 {
                     "type": "section",
                     "text": {
-                        "text": f"No observations in the past {interval} hours.",
+                        "text": f"No observations processed in the past {interval} hours.",
                         "type": "mrkdwn"
                     }
                 },
@@ -127,7 +127,7 @@ def format_message(interval):
             {
                 "type": "section",
                 "text": {
-                    "text": f"*<{base_url}/|Quick LOOK Pipeline> daily summary*",
+                    "text": f"*<{base_url}/|Quick LOOK> daily summary*",
                     "type": "mrkdwn"
                 }
             },
@@ -203,7 +203,7 @@ def format_message(interval):
 
     # summarize other
     other = not_reduced[not_reduced['skip'] == '']
-    if len(skipped) > 0:
+    if len(other) > 0:
         rows = []
         for target in sorted(set(other['target']), key=natural_sort_key):
             s = other[other['target'] == target]
@@ -222,9 +222,8 @@ def format_message(interval):
 
 
 message = format_message(args.interval)
-if args.debug:
-    print(message)
-elif args.user:
+logger.info(message)
+if args.user:
     r = requests.post(user_post_url, data=json.dumps(message))
 else:
     r = requests.post(notifications_post_url, data=json.dumps(message))
