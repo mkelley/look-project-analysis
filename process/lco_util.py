@@ -60,7 +60,9 @@ rename_target = {
     'P/2016 J3': '414P',
     'A/2019 U5': 'C/2019 U5',
     'C/2018 F4': 'C/2018 F4-A',
-    'A/2021 G2': 'C/2021 G2'
+    'A/2021 G2': 'C/2021 G2',
+    '73P-JD001': '73P-BU',
+    '73P-JD001.5': '73P-BU',
 }
 
 target_names = {
@@ -95,6 +97,7 @@ target_names = {
     'C/2021 S3': 'C/2021 S3 (PANSTARRS)',
     'C/2021 T4': 'C/2021 T4 (Lemmon)',
     'C/2021 Y1': 'C/2021 Y1 (ATLAS)',
+    'C/2022 E3': 'C/2022 E3 (ZTF)',
     'P/2020 X1': 'P/2020 X1 (ATLAS)',
     '7P': '7P/Pons-Winnecke',
     '19P': '19P/Borrelly',
@@ -103,6 +106,8 @@ target_names = {
     '44P': '44P/Reinmuth 2',
     '57P': '57P/duToit-Neujmin-Delporte',
     '67P': '67P/Churyumov-Gerasimenko',
+    '73P-BU': '73P-BU/Schwassmann Wachmann 3 BU',
+    '73P-BV': '73P-BV/Schwassmann Wachmann 3 BV',
     '97P': 'Metcalf-Brewington',
     '99P': '99P/Kowal 1',
     '108P': '108P/Ciffreo',
@@ -111,6 +116,7 @@ target_names = {
     '141P': '141P/Machholz 2',
     '156P': '156P/Russell-LINEAR',
     '191P': '191P/McNaught',
+    '285P': '285P/LINEAR',
     '382P': '382P/Larson',
     '414P': '414P/STEREO',
     '2005 QN173': '248370 (2005 QN173)',

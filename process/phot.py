@@ -219,7 +219,7 @@ for f in files:
         logger.error('Adding %s to skip file list: WCS transformation error.'
                      '  Ephemeris: %s, %s', basename,
                      eph['RA'] + offset[target]['ra'],
-                     eph['DEC'] + offset['dec'])
+                     eph['DEC'] + offset[target]['dec'])
         skip.add_row((basename, 'WCS transformation error'))
         skip.write('phot-skip.list',
                    format='ascii.csv', overwrite=True)
