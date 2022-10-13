@@ -63,6 +63,8 @@ rename_target = {
     'A/2021 G2': 'C/2021 G2',
     '73P-JD001': '73P-BU',
     '73P-JD001.5': '73P-BU',
+    '73p': '73P',
+    'RJ001': '73P-BY'
 }
 
 target_names = {
@@ -106,8 +108,10 @@ target_names = {
     '44P': '44P/Reinmuth 2',
     '57P': '57P/duToit-Neujmin-Delporte',
     '67P': '67P/Churyumov-Gerasimenko',
+    '73P': '73P/Schwassmann Wachmann 3',
     '73P-BU': '73P-BU/Schwassmann Wachmann 3 BU',
     '73P-BV': '73P-BV/Schwassmann Wachmann 3 BV',
+    '73P-BY': '73P-BY/Schwassmann Wachmann 3 BY',
     '97P': 'Metcalf-Brewington',
     '99P': '99P/Kowal 1',
     '108P': '108P/Ciffreo',
