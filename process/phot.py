@@ -15,14 +15,14 @@ from astropy.io import fits
 from astropy.io import ascii
 from astropy.time import Time
 from astropy.table import Table
-from astropy.coordinates import SkyCoord
+from astropy.coordinates import SkyCoord, Angle
 from astropy.wcs import WCS, FITSFixedWarning
 import sep
-from sbpy.data import Ephem, Orbit, TimeScaleWarning
+from sbpy.data import Ephem, Orbit, TimeScaleWarning, QueryError
 
 from calviacat import RefCat2
 from mskpy import gcentroid
-from lco_util import (rho_labels, rho_km, rho_arcsec, rename_target,
+from lco_util import (rho_labels, rho_km, rho_arcsec, skip_targets, rename_target,
                       locations, color_corrections, assumed_gmr, filters, setup_logger)
 
 parser = argparse.ArgumentParser(
@@ -70,6 +70,7 @@ def set_table_formats(tab):
     tab['rh'].format = '{:.3f}'
     tab['delta'].format = '{:.3f}'
     tab['phase'].format = '{:.3f}'
+    tab['pixel scale'].format = '{:.3f}'
     tab['zp'].format = '{:.4f}'
     tab['color cor'].format = '{:.4f}'
     tab['zp err'].format = '{:.4f}'
@@ -137,7 +138,7 @@ for f in files:
     if basename in skip['file'] or f in tab['file']:
         continue
 
-    bgf = 'backgrounds/{}.fits'.format(basename)
+    bgf = 'backgrounds/{}.fits.gz'.format(basename)
 
     try:
         hdu = fits.open(f)
@@ -150,8 +151,8 @@ for f in files:
     h = hdu['sci'].header
 
     target = rename_target.get(h['OBJECT'], h['OBJECT'])
-    # if target != '2014 UN271':
-    #     continue
+    if target in skip_targets:
+        continue
 
     bpm = hdu['bpm'].data != 0
     im = hdu['sci'].data + 0
@@ -181,48 +182,43 @@ for f in files:
     midtime = Time(h['DATE-OBS']) + h['EXPTIME'] / 2 * u.s
     opts = dict(epochs=midtime, cache=True, location=locations[basename[:3]])
     eph = None
-    try:
-        if target.startswith('C/') or target.startswith('P/') or target.endswith('P'):
-            opts2 = dict(
-                id_type='designation',
-                closest_apparition=True,
-                no_fragments=True,
-            )
-        else:
-            opts2 = dict(
-                id_type="smallbody"
-            )
+    if target.startswith('C/') or target.startswith('P/') or target.endswith('P'):
+        opts2 = dict(
+            id_type='designation',
+            closest_apparition=True,
+            no_fragments=True,
+        )
+    else:
+        opts2 = dict(
+            id_type="smallbody"
+        )
 
+    try:
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', (UserWarning, TimeScaleWarning))
             eph = Ephem.from_horizons(target, **opts, **opts2)
             orb = Orbit.from_horizons(target, epochs=opts['epochs'],
-                                      cache=opts['cache'], **opts2)
-
-        eph['rh'] = [np.sign(row['rdot']) * row['rh'] for row in eph]
-        Tp = orb['Tp'].jd
-    except:
-        pass
-
-    try:
-        if eph is None:
-            eph = Ephem.from_mpc(target, **opts)
-            Tp = np.ma.masked
-    except:
+                                    cache=opts['cache'], center='Sol', **opts2)
+    except QueryError:
+        logger.error("Ephemeris request error.  Adding to skip list.  Add a name translation to lco_util and restore?")
+        skip.add_row((basename, 'ephemeris request error, possible issue with name'))
+        skip.write('phot-skip.list', format='ascii.csv', overwrite=True)
         continue
+
+    eph['rh'] = [np.sign(row['rdot']) * row['rh'] for row in eph]
+    Tp = orb['Tp'].jd
 
     # target location
     wcs = WCS(h)
-    c = wcs.all_world2pix(eph['RA'] + offset[target]['ra'],
-                          eph['DEC'] + offset[target]['dec'], 0)
+    c = wcs.all_world2pix(eph['ra'] + offset[target]['ra'],
+                          eph['dec'] + offset[target]['dec'], 0)
     if any(np.isnan(c).ravel()):
         logger.error('Adding %s to skip file list: WCS transformation error.'
                      '  Ephemeris: %s, %s', basename,
-                     eph['RA'] + offset[target]['ra'],
-                     eph['DEC'] + offset[target]['dec'])
+                     eph['ra'] + offset[target]['ra'],
+                     eph['dec'] + offset[target]['dec'])
         skip.add_row((basename, 'WCS transformation error'))
-        skip.write('phot-skip.list',
-                   format='ascii.csv', overwrite=True)
+        skip.write('phot-skip.list', format='ascii.csv', overwrite=True)
         continue
 
     gx, gy = np.array(c).ravel()
@@ -269,7 +265,13 @@ for f in files:
 
     m_inst = -2.5 * np.log10(phot['flux'])
     m_err = phot['fluxerr'] / phot['flux'] * 1.0857
-    catfilt = filters[h['FILTER']]
+    catfilt = filters.get(h['FILTER'])
+    if catfilt is None:
+        msg = "No calibration path for filter " + h["FILTER"]
+        logger.exception(msg)
+        skip.add_row((basename, msg))
+        skip.write("phot-skip.list", format="ascii.csv", overwrite=True)
+        continue
 
     # if h['FILTER'] == 'gp':
     #    C = -0.120
@@ -362,10 +364,10 @@ for f in files:
     # bgsig = mms[2]
     # bgarea = bgap.area
 
-    rho10k = (1e4 * u.km / (725 * u.km / u.arcsec / u.au) / eph['delta']).to(
-        u.arcsec).value[0]
+    rho10k = float((1e4 * u.km / (725 * u.km / u.arcsec / u.au) / eph['delta']).to(
+        u.arcsec).value[0])
     rho = [r * u.arcsec for r in rho_arcsec]
-    rho.extend([r / 725 / eph['delta'].value * u.arcsec for r in rho_km])
+    rho.extend([r / 725 / float(eph['delta'].value[0]) * u.arcsec for r in rho_km])
     rho = u.Quantity(rho, u.arcsec)
     rap = (rho / ps).value
     area = np.pi * rap**2
@@ -381,15 +383,15 @@ for f in files:
     fracday = t.mjd % 1
     tmtp = t.jd - Tp
 
-    row = ([f, target, midtime.iso[:-4], fracday, tmtp, eph['ra'].value[0],
-            eph['dec'].value[0], eph['r'].value[0],
-            eph['delta'].value[0], eph['alpha'].value[0], h['FILTER'], catfilt, n_cal,
+    row = ([f, target, midtime.iso[:-4], fracday, tmtp[0], float(eph['ra'].value[0]),
+            float(eph['dec'].value[0]), float(eph['r'].value[0]),
+            float(eph['delta'].value[0]), float(eph['alpha'].value[0]), ps.value, h['FILTER'], catfilt, n_cal,
             zp, C, zp_unc, h['EXPTIME'], h['AIRMASS'], h['L1FWHM'], rho10k,
             cx, cy, dc, bgarea, bg, bgsig] + list(flux) + list(mc) + list(mc_err))
 
     if isinstance(tab, dict):
         names = ['file', 'target', 'date', 'fracday', 'tmtp', 'ra', 'dec',
-                 'rh', 'delta', 'phase', 'filter', 'catalog filter', 'N cal',
+                 'rh', 'delta', 'phase', 'pixel scale', 'filter', 'catalog filter', 'N cal',
                  'zp', 'color cor', 'zp err', 'exptime', 'airmass', 'seeing',
                  'rho10k', 'cx', 'cy', 'dc', 'bgarea', 'bg', 'bgsig']
         names.extend(['flux{}'.format(r) for r in rho_labels])

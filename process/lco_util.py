@@ -41,12 +41,20 @@ filters = {
     'ip': 'i',
     'zs': 'z',
     'B': 'g',
-    'V': 'g'
+    'V': 'g',
+    'solar': 'r',
+}
+
+# Place PCCP objects here until they get assigned a new designation
+skip_targets = {
+    "P21D3Eu"
 }
 
 rename_target = {
+    "A10X1pX": "C/2023 S2",
     'C4AGJ62': 'C/2021 A1',
     'N00ht7m': 'C/2021 A2',
+    'P21JDKb': 'A/2023 R3',
     '14F2601': '2021 HO',
     'C/2020 R4 ( ATLAS )': 'C/2020 R4',
     '7P Pons-Winnecke': '7P',
@@ -56,6 +64,7 @@ rename_target = {
     '2014 UN271': 'C/2014 UN271',
     'c/2014 UN271': 'C/2014 UN271',
     'c/2014 Un271': 'C/2014 UN271',
+    'c/2014 un271': 'C/2014 UN271',
     'C/2014 Un271': 'C/2014 UN271',
     'P/2016 J3': '414P',
     'A/2019 U5': 'C/2019 U5',
@@ -64,7 +73,14 @@ rename_target = {
     '73P-JD001': '73P-BU',
     '73P-JD001.5': '73P-BU',
     '73p': '73P',
-    'RJ001': '73P-BY'
+    'RJ001': '73P-BY',
+    '364p': '364P',
+    '12p': '12P',
+    '12P/Pons-Brooks': '12P',
+    'chiron': '2060',
+    'Chiron': '2060',
+    '144p': '144P',
+    '144P/Kushida': '144P',
 }
 
 target_names = {
@@ -100,32 +116,42 @@ target_names = {
     'C/2021 T4': 'C/2021 T4 (Lemmon)',
     'C/2021 Y1': 'C/2021 Y1 (ATLAS)',
     'C/2022 E3': 'C/2022 E3 (ZTF)',
+    'C/2023 S2': 'C/2023 S2 (ATLAS)',
     'P/2020 X1': 'P/2020 X1 (ATLAS)',
     '7P': '7P/Pons-Winnecke',
+    '12P': '12P/Pons-Brooks',
     '19P': '19P/Borrelly',
     '22P': '22P/Kopff',
     '29P': '29P/Schwassmann-Wachmann 1',
     '44P': '44P/Reinmuth 2',
     '57P': '57P/duToit-Neujmin-Delporte',
+    '62P': '62P/Tsuchinshan 1',
     '67P': '67P/Churyumov-Gerasimenko',
     '73P': '73P/Schwassmann Wachmann 3',
     '73P-BU': '73P-BU/Schwassmann Wachmann 3 BU',
     '73P-BV': '73P-BV/Schwassmann Wachmann 3 BV',
     '73P-BY': '73P-BY/Schwassmann Wachmann 3 BY',
+    '81P': '81P/Wild 2',
     '97P': 'Metcalf-Brewington',
     '99P': '99P/Kowal 1',
     '108P': '108P/Ciffreo',
     '117P': '117P/Helin-Roman-Alu 1',
     '120P': '120P/Mueller 1',
     '141P': '141P/Machholz 2',
+    '144P': '144P/Kushida',
     '156P': '156P/Russell-LINEAR',
+    '157P': '157P/Tritton',
+    '169P': '169P/NEAT',
     '191P': '191P/McNaught',
     '285P': '285P/LINEAR',
     '382P': '382P/Larson',
+    '364P': '364P/PANSTARRS',
+    '395P': '395P/Catalina-NEAT',
     '414P': '414P/STEREO',
+    '445P': '445P/Lemmon-PANSTARRS',
     '2005 QN173': '248370 (2005 QN173)',
     '2021 HO': '2021 HO',
-    '2060': '95P/Chiron'
+    '2060': '95P/Chiron',
 }
 
 locations = {  # approximate

@@ -70,6 +70,7 @@ def combine_photometry(phot, target, site, filter):
         'rh': phot['rh'][i].mean(),
         'delta': phot['delta'][i].mean(),
         'phase': phot['phase'][i].mean(),
+        'pixel scale': phot['pixel scale'][i].mean(),
         'filter': filter,
         'catalog filter': phot['catalog filter'][0],
         'N exp': i.sum(),
@@ -151,7 +152,7 @@ def stack_cluster(target, cluster, shape, site):
     for i in range(len(cluster['file'])):
         im0 = fits.getdata(cluster['file'][i])
         im0 -= fits.getdata(
-            f"backgrounds/{os.path.basename(cluster['file'][i][:-3])}")
+            f"backgrounds/{os.path.basename(cluster['file'][i][:-3])}.gz")
         mzp = cluster['zp'][i] + \
             cluster['color cor'][i] * assumed_gmr[target]
         scale[i] = 10**(-0.4 * (mzp - 25))
@@ -261,6 +262,7 @@ def update_binned_photometry(cluster, target, site, filter, prefix, binned, phot
     tab['rh'].format = '{:.3f}'
     tab['delta'].format = '{:.3f}'
     tab['phase'].format = '{:.3f}'
+    tab['pixel scale'].format = '{:.3f}'
     tab['exptime'].format = '{:.0f}'
     tab['airmass'].format = '{:.3f}'
     tab['seeing'].format = '{:.2f}'
@@ -299,6 +301,8 @@ def main(args, logger):
     phot = load_photometry()
     targets = set(phot['target']) if args.target is None else [args.target]
     filters = set(phot['filter']) if args.filter is None else [args.filter]
+    logger.debug("Targets: %s", ", ".join(targets))
+    logger.debug("Filters: %s", ", ".join(filters))
 
     binned = load_binned_photometry()
 
