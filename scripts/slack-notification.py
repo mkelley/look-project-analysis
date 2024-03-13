@@ -30,14 +30,12 @@ import os
 import json
 import argparse
 import requests
-import sqlite3
-import math
 from urllib.parse import quote
 import astropy.units as u
 from astropy.io import ascii
 from astropy.time import Time
 from sbpy.data import natural_sort_key
-from lco_util import setup_logger
+from quick_look import setup_logger
 
 parser = argparse.ArgumentParser(epilog='Requires environment variables '
                                  'LOOK_SLACK_USER_POST_URL, and LOOK_SLACK_NOTIFICATIONS_POST_URL')

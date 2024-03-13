@@ -1,25 +1,17 @@
 #!/bin/bash -eu
 LOGROTATE=/usr/sbin/logrotate
-source /home/msk/lco/.venv/bin/activate
+source /oort/msk/lco/look/look-project-analysis/.venv/bin/activate
 source /oort/msk/lco/look/google-cloud-sdk/path.bash.inc
 
 cd /oort/msk/lco/look
 $LOGROTATE look-project-analysis/scripts/logrotate.config -s logrotate.state
 
-python3 file-summary.py &&\
-python3 phot.py -q &&\
-python3 stack.py -q &&\
-python3 color-and-ostat.py -q &&\
-python3 phot-to-json.py &&\
-python3 temporal-filter.py -q
-
-cp -f \
-   colors.txt avg-colors.txt\
-   phot.txt phot-binned.txt\
-   phot.json phot-binned.json\
-   summary.json stack-clusters.json\
-   color-histogram.png\
-   /home/msk/public_html/look/
+file-summary.py &&\
+phot.py -q &&\
+stack.py -q &&\
+color-and-ostat.py -q &&\
+phot-to-json.py &&\
+temporal-filter.py -q
 
 zip phot.json.zip phot.json &&\
 zip phot-binned.json.zip phot-binned.json &&\

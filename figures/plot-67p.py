@@ -5,7 +5,7 @@ import astropy.units as u
 from astropy.io import ascii
 from astropy.time import Time
 from sbpy.data import Ephem
-from lco_util import target_to_filename
+from quick_look import target_to_filename
 
 warnings.simplefilter('ignore', UserWarning)
 
