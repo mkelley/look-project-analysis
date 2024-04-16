@@ -72,6 +72,7 @@ rename_target = {
     "Chiron": "2060",
     "144p": "144P",
     "144P/Kushida": "144P",
+    "62p": "62P",
 }
 
 target_names = {
