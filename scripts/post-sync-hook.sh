@@ -19,9 +19,9 @@ zip summary.json.zip summary.json &&\
 zip stack-clusters.json.zip stack-clusters.json &&\
 zip phot.txt.zip phot.txt &&\
 zip phot-binned.txt.zip phot-binned.txt &&\
-gsutil cp phot.json.zip gs://lco-outbursting-objects-0514.appspot.com/data/phot.json.zip &&\
-gsutil cp phot-binned.json.zip gs://lco-outbursting-objects-0514.appspot.com/data/phot-binned.json.zip &&\
-gsutil cp summary.json.zip gs://lco-outbursting-objects-0514.appspot.com/data/summary.json.zip &&\
-gsutil cp stack-clusters.json.zip gs://lco-outbursting-objects-0514.appspot.com/data/stack-clusters.json.zip &&\
-gsutil cp phot.txt.zip gs://lco-outbursting-objects-0514.appspot.com/data/phot.txt.zip &&\
-gsutil cp phot-binned.txt.zip gs://lco-outbursting-objects-0514.appspot.com/data/phot-binned.txt.zip
+gcloud storage cp phot.json.zip gs://lco-outbursting-objects-0514.appspot.com/data/phot.json.zip &&\
+gcloud storage cp phot-binned.json.zip gs://lco-outbursting-objects-0514.appspot.com/data/phot-binned.json.zip &&\
+gcloud storage cp summary.json.zip gs://lco-outbursting-objects-0514.appspot.com/data/summary.json.zip &&\
+gcloud storage cp stack-clusters.json.zip gs://lco-outbursting-objects-0514.appspot.com/data/stack-clusters.json.zip &&\
+gcloud storage cp phot.txt.zip gs://lco-outbursting-objects-0514.appspot.com/data/phot.txt.zip &&\
+gcloud storage cp phot-binned.txt.zip gs://lco-outbursting-objects-0514.appspot.com/data/phot-binned.txt.zip

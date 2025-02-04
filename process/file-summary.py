@@ -34,6 +34,8 @@ for f in glob("e91/202*/*.fits.fz"):
         "obs date": h["DATE-OBS"],
         "filter": h["FILTER"],
         "exp time": h["EXPTIME"],
+        "userid": h["USERID"],
+        "propid": h["PROPID"],
     }
 
     files[f] = row
