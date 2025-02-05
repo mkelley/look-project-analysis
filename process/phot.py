@@ -36,7 +36,8 @@ from quick_look import (
 )
 
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument("files", nargs="*", help="measure these files")
+parser.add_argument("sources", nargs="*", help="measure these files (or targets with --target)")
+parser.add_argument("--target", dest="mode", default="file", action="store_const", const="target", help="process targets, rather than files",)
 parser.add_argument(
     "-f", "--force", action="store_true", help="re-measure and overwrite existing data"
 )
@@ -65,8 +66,14 @@ if not os.path.exists("backgrounds"):
     os.system("mkdir backgrounds")
 
 # skip_objects = ['C/2021 C4']  # not in horizons
-
 files = glob("e91/*/*fz")
+if args.mode == "file" and len(args.sources) > 0:
+    files = args.sources
+    # validate input
+    for f in files:
+        if not f.startswith("e91/"):
+            raise ValueError(f"{f} must start with e91/")
+
 if os.path.exists("phot-skip.list"):
     skip = ascii.read("phot-skip.list")
 else:
@@ -103,7 +110,7 @@ def set_table_formats(tab):
     return tab
 
 
-if os.path.exists("phot.txt") and not args.force:
+if os.path.exists("phot.txt"):
     tab = set_table_formats(ascii.read("phot.txt"))
 else:
     tab = {"file": []}
@@ -137,7 +144,11 @@ for f in files:
             i = tab["file"] != f
             tab = tab[i]
 
-    if basename in skip["file"] or f in tab["file"]:
+    if basename in skip["file"]:
+        continue
+
+    # file mode? file already processed? force reprocessing not enabled?
+    if args.mode == "file" and f in tab["file"] and not args.force:
         continue
 
     bgf = "backgrounds/{}.fits.gz".format(basename)
@@ -154,6 +165,19 @@ for f in files:
     target = rename_target.get(h["OBJECT"], h["OBJECT"])
     if target in skip_targets:
         continue
+
+    if args.mode == "target":
+        if target not in args.sources:
+            # target mode and this target was not requested
+            continue
+        elif f in tab["file"] and not args.force:
+            # target mode, but this file was already processed and we are not to
+            # reprocess anything
+            continue
+
+    # at this point if the file is in the table, we need to remove it
+    if f in tab["file"]:
+        tab = tab[tab["file"] != f]
 
     bpm = hdu["bpm"].data != 0
     im = hdu["sci"].data + 0
