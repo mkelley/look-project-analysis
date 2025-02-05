@@ -15,11 +15,19 @@ assumed_gmr["7P"] = 0.58
 assumed_gmr["C/2020 R4"] = 0.48
 assumed_gmr["C/2014 UN271"] = 0.48
 
-# sigma clipped medians
+# sigma clipped means
 color_corrections = {
-    "gp": -0.0863,  # N=1008, stdev 0.035
-    "rp": 0.0212,  # N=1147, stdev 0.018
-    "ip": 0.0111,  # N=51, stdev 0.025
+    "1m0": {
+        "gp": -0.0914,  # N=13933, stdev 0.0333
+        "rp": 0.0197,  # N=14249, stdev 0.0151
+        "ip": 0.0260,  # N=888, stdev 0.0162
+    },
+    "2m0": {
+        "gp": -0.0279,  # 418, 0.0206
+        "rp": 0.0158,  # 438, 0.0175
+        "ip": 0.0159,  # 408, 0.0194
+        "zs": -0.0037,  # 364, 0.0170
+    },
 }
 
 filters = {

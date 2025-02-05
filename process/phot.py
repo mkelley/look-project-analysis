@@ -124,6 +124,8 @@ centroid_options = defaultdict(lambda: {"binning": 1, "boxes": [17, 11]})
 
 new_objects = set()
 
+rc2 = RefCat2("cat.db", min_matches=10, logger=logger)
+
 for f in files:
     basename = os.path.basename(f)[:-8]
     if f in tab["file"] and basename in skip["file"]:
@@ -170,6 +172,8 @@ for f in files:
         skip.add_row((basename, "WCS probably missing"))
         skip.write("phot-skip.list", format="ascii.csv", overwrite=True)
         continue
+
+    phot = phot[phot["flux"] > 0]
 
     new_objects.add(target)
     ps = h["PIXSCALE"] * u.arcsec
@@ -251,8 +255,6 @@ for f in files:
     # calibrate
     lco = SkyCoord(phot["ra"], phot["dec"], unit="deg")
 
-    rc2 = RefCat2("cat.db", min_matches=10, logger=logger)
-
     if len(rc2.search(lco)[0]) < 100:
         rc2.fetch_field(lco)
 
@@ -274,14 +276,7 @@ for f in files:
         skip.write("phot-skip.list", format="ascii.csv", overwrite=True)
         continue
 
-    # if h['FILTER'] == 'gp':
-    #    C = -0.120
-    # elif h['FILTER'] == 'rp':
-    #    C = 0.029
-    # else:
-    #    C = None
-
-    C = color_corrections.get(h["filter"])
+    C = color_corrections.get(h["telid"], {}).get(h["filter"], None)
     try:
         zp, C, zp_unc, m, gmr, gmi = rc2.cal_color(
             objids, m_inst, catfilt, "g-r", C=C, mlim=[13, 18], gmi_lim=[0.2, 3.0]
