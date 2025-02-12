@@ -149,6 +149,7 @@ for f in files:
 
     # file mode? file already processed? force reprocessing not enabled?
     if args.mode == "file" and f in tab["file"] and not args.force:
+        logger.debug("file mode, but file already processed and --force not enabled: %s", f)
         continue
 
     bgf = "backgrounds/{}.fits.gz".format(basename)
@@ -164,15 +165,15 @@ for f in files:
 
     target = rename_target.get(h["OBJECT"], h["OBJECT"])
     if target in skip_targets:
+        logger.debug("target in skip_targets: %s", f)
         continue
 
     if args.mode == "target":
         if target not in args.sources:
-            # target mode and this target was not requested
+            logger.debug("target mode and this target was not requested: %s", f)
             continue
         elif f in tab["file"] and not args.force:
-            # target mode, but this file was already processed and we are not to
-            # reprocess anything
+            logger.debug("target mode but this file already processed and --force not enabled: %s", f)
             continue
 
     # at this point if the file is in the table, we need to remove it
