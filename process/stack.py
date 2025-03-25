@@ -15,7 +15,7 @@ from astropy.io import ascii, fits
 from astropy.table import vstack
 from astropy.wcs import WCS, FITSFixedWarning
 import astropy.units as u
-from reproject import reproject_exact
+from reproject import reproject_adaptive
 from ccdproc import Combiner
 from sbpy.data import Ephem, Names, TimeScaleWarning
 from sbpy.data.names import TargetNameParseError
@@ -144,7 +144,6 @@ def stack_cluster(target, cluster, shape, site):
 
     wcs0.wcs.dateobs = date.isot
     wcs0.wcs.mjdobs = date.mjd
-    Omega0 = wcs0.proj_plane_pixel_area()
 
     # background subtract, photometric calibration, re-projection
     stack = np.ma.empty((len(cluster["file"]), shape[0], shape[1]))
@@ -157,11 +156,6 @@ def stack_cluster(target, cluster, shape, site):
         )
         mzp = cluster["zp"][i] + cluster["color cor"][i] * assumed_gmr[target]
         scale[i] = 10 ** (-0.4 * (mzp - 25))
-
-        # conserve flux
-        Omega = wcs[i].proj_plane_pixel_area()
-        scale[i] *= (Omega / Omega0).value
-
         im0 *= scale[i]
 
         # I'm not sure how best to avoid interpolation artifacts.  It may be because
@@ -170,7 +164,8 @@ def stack_cluster(target, cluster, shape, site):
         # stack.data[i], cov = reproject_adaptive((im0, wcs[i]), wcs0, shape,
         #                                     order='nearest-neighbor')
         # ...
-        stack.data[i], cov = reproject_exact((im0, wcs[i]), wcs0, shape, parallel=True)
+        # stack.data[i], cov = reproject_exact((im0, wcs[i]), wcs0, shape, parallel=True)
+        stack.data[i], cov = reproject_adaptive((im0, wcs[i]), wcs0, shape, parallel=True, conserve_flux=True)
         stack.mask[i] = cov == 0
 
     stack = CCDData(stack, unit="adu")
