@@ -50,6 +50,7 @@ skip_targets = {
 }
 
 rename_target = {
+    "A11pl3Z": "3I",
     "A10X1pX": "C/2023 S2",
     "C4AGJ62": "C/2021 A1",
     "N00ht7m": "C/2021 A2",
@@ -81,6 +82,8 @@ rename_target = {
     "144p": "144P",
     "144P/Kushida": "144P",
     "62p": "62P",
+    "C/2025 N1": "3I",
+    "c/2025n1": "3I",
 }
 
 target_names = {
@@ -152,6 +155,7 @@ target_names = {
     "2005 QN173": "248370 (2005 QN173)",
     "2021 HO": "2021 HO",
     "2060": "95P/Chiron",
+    "3I": "3I/ATLAS",
 }
 
 locations = {  # approximate
