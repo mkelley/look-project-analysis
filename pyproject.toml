@@ -35,7 +35,7 @@ dependencies = [
 	"reproject~=0.8",
 	"matplotlib~=3.0",
 ]
-version = "0.4.2"
+version = "0.5.0"
 
 [tool.setuptools.packages.find]
 
@@ -51,4 +51,5 @@ script-files = [
 	"process/temporal-filter.py",
 	"scripts/slack-notification.py",
 	"scripts/post-sync-hook.sh",
+	"scripts/reprocess-target.py",
 ]

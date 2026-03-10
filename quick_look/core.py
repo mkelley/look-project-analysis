@@ -1,5 +1,10 @@
+import os
 import logging
+import warnings
+from glob import glob
 from collections import defaultdict
+from astropy.wcs import WCS
+from astropy.utils.exceptions import AstropyWarning
 
 rho_arcsec = [2, 5, 10, 12, 20]
 rho_km = [5e3, 1e4, 2e4]
@@ -44,10 +49,7 @@ filters = {
 }
 
 # Place PCCP objects here until they get assigned a new designation
-skip_targets = {
-    "P21D3Eu",
-    "CA9MP42",
-}
+skip_targets = {}
 
 rename_target = {
     "A11pl3Z": "3I",
@@ -82,8 +84,19 @@ rename_target = {
     "144p": "144P",
     "144P/Kushida": "144P",
     "62p": "62P",
+    "3i": "3I",
+    "3I/ATLAS": "3I",
+    "3I/Atlas": "3I",
     "C/2025 N1": "3I",
     "c/2025n1": "3I",
+    "C/2025 N1 3I/Atlas": "3I",
+    "C/2025k1": "C/2025 K1",
+    "C/2025K1": "C/2025 K1",
+    "PDOC001": "P/2025 W3",
+    "A11vZ28": "C/2025 W2",
+    "P12hxMW": "P/2025 W4",
+    "P21D3Eu": "C/2023 B1",
+    "CA9MP42": "C/2024 E1",
 }
 
 target_names = {
@@ -169,6 +182,33 @@ locations = {  # approximate
 }
 
 
+def set_phot_table_formats(tab):
+    tab["fracday"].format = "{:.5f}"
+    tab["tmtp"].format = "{:.3f}"
+    tab["rh"].format = "{:.3f}"
+    tab["delta"].format = "{:.3f}"
+    tab["phase"].format = "{:.3f}"
+    tab["pixel scale"].format = "{:.3f}"
+    tab["zp"].format = "{:.4f}"
+    tab["color cor"].format = "{:.4f}"
+    tab["zp err"].format = "{:.4f}"
+    tab["exptime"].format = "{:.1f}"
+    tab["airmass"].format = "{:.3f}"
+    tab["seeing"].format = "{:.2f}"
+    tab["rho10k"].format = "{:.2f}"
+    tab["cx"].format = "{:.1f}"
+    tab["cy"].format = "{:.1f}"
+    tab["dc"].format = "{:.1f}"
+    tab["bgarea"].format = "{:.0f}"
+    tab["bg"].format = "{:.5g}"
+    tab["bgsig"].format = "{:.5g}"
+    for r in rho_labels:
+        tab["flux{}".format(r)].format = "{:.5g}"
+        tab["m{}".format(r)].format = "{:.3f}"
+        tab["merr{}".format(r)].format = "{:.3f}"
+    return tab
+
+
 def target_to_filename(target):
     return target.lower().replace("/", "").replace(" ", "").replace("-", "")
 
@@ -187,3 +227,41 @@ def setup_logger(name, level):
     for h in logger.handlers:
         h.setFormatter(formatter)
     return logger
+
+
+class WCSReplacements:
+    """Find WCS replacement files with the pattern wcs/*/*.hdr."""
+
+    def __init__(self):
+        self.files = {}
+        for fn in glob("data/wcs/*/*.hdr"):
+            self.files[self.key(fn)] = fn
+
+    def __contains__(self, fn):
+        """True if fn has a wcs_replacement."""
+        return self.key(fn) in self.files
+
+    @staticmethod
+    def key(fn: str) -> str:
+        """Convert the file name to a replacement key value.
+
+        .hdr or .fits.fz are stripped, as well as the processing level suffix,
+        e.g., -e91.
+
+        """
+
+        root = os.path.basename(fn).replace(".hdr", "").replace(".fits.fz", "")
+        return "-".join(root.split("-")[:-1])
+
+    def get(self, fn: str) -> WCS:
+        """Get WCS replacement if exists, or else ``None``.
+
+        Replacements are matched by `key()`.
+
+        """
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", AstropyWarning)
+            wcs = WCS(fn)
+
+        return WCS(self.files.get(self.key(fn)))

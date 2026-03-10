@@ -33,11 +33,22 @@ from quick_look import (
     assumed_gmr,
     filters,
     setup_logger,
+    WCSReplacements,
+    set_phot_table_formats,
 )
 
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument("sources", nargs="*", help="measure these files (or targets with --target)")
-parser.add_argument("--target", dest="mode", default="file", action="store_const", const="target", help="process targets, rather than files",)
+parser.add_argument(
+    "sources", nargs="*", help="measure these files (or targets with --target)"
+)
+parser.add_argument(
+    "--target",
+    dest="mode",
+    default="file",
+    action="store_const",
+    const="target",
+    help="process targets, rather than files",
+)
 parser.add_argument(
     "-f", "--force", action="store_true", help="re-measure and overwrite existing data"
 )
@@ -83,35 +94,8 @@ else:
 bgopts = dict(bw=256, bh=256, fw=5, fh=5)
 
 
-def set_table_formats(tab):
-    tab["fracday"].format = "{:.5f}"
-    tab["tmtp"].format = "{:.3f}"
-    tab["rh"].format = "{:.3f}"
-    tab["delta"].format = "{:.3f}"
-    tab["phase"].format = "{:.3f}"
-    tab["pixel scale"].format = "{:.3f}"
-    tab["zp"].format = "{:.4f}"
-    tab["color cor"].format = "{:.4f}"
-    tab["zp err"].format = "{:.4f}"
-    tab["exptime"].format = "{:.1f}"
-    tab["airmass"].format = "{:.3f}"
-    tab["seeing"].format = "{:.2f}"
-    tab["rho10k"].format = "{:.2f}"
-    tab["cx"].format = "{:.1f}"
-    tab["cy"].format = "{:.1f}"
-    tab["dc"].format = "{:.1f}"
-    tab["bgarea"].format = "{:.0f}"
-    tab["bg"].format = "{:.5g}"
-    tab["bgsig"].format = "{:.5g}"
-    for r in rho_labels:
-        tab["flux{}".format(r)].format = "{:.5g}"
-        tab["m{}".format(r)].format = "{:.3f}"
-        tab["merr{}".format(r)].format = "{:.3f}"
-    return tab
-
-
 if os.path.exists("phot.txt"):
-    tab = set_table_formats(ascii.read("phot.txt"))
+    tab = set_phot_table_formats(ascii.read("phot.txt"))
 else:
     tab = {"file": []}
 
@@ -121,7 +105,7 @@ offset["141P"] = {"ra": 1.4 * u.arcsec, "dec": -0.9 * u.arcsec}
 
 # centroiding box (box sizes are binned pixels)
 centroid_options = defaultdict(lambda: {"binning": 1, "boxes": [17, 11]})
-#centroid_options["C/2014 UN271"] = {"binning": 2, "boxes": None}
+# centroid_options["C/2014 UN271"] = {"binning": 2, "boxes": None}
 # centroid_options['7P'] = {
 #     'binning': 1,
 #     'boxes': [9, 5]
@@ -132,6 +116,8 @@ centroid_options = defaultdict(lambda: {"binning": 1, "boxes": [17, 11]})
 new_objects = set()
 
 rc2 = RefCat2("cat.db", min_matches=10, logger=logger)
+
+wcs_replacements = WCSReplacements()
 
 for f in files:
     basename = os.path.basename(f)[:-8]
@@ -149,19 +135,21 @@ for f in files:
 
     # file mode? file already processed? force reprocessing not enabled?
     if args.mode == "file" and f in tab["file"] and not args.force:
-        logger.debug("file mode, but file already processed and --force not enabled: %s", f)
+        logger.debug(
+            "file mode, but file already processed and --force not enabled: %s", f
+        )
         continue
 
     bgf = "backgrounds/{}.fits.gz".format(basename)
 
     try:
-        hdu = fits.open(f)
+        hdul = fits.open(f)
     except OSError:
         logger.exception("Error opening %s.", basename)
         skip.add_row((basename, "Error opening file"))
         skip.write("phot-skip.list", format="ascii.csv", overwrite=True)
         continue
-    h = hdu["sci"].header
+    h = hdul["sci"].header
 
     target = rename_target.get(h["OBJECT"], h["OBJECT"])
     if target in skip_targets:
@@ -173,25 +161,42 @@ for f in files:
             logger.debug("target mode and this target was not requested: %s", f)
             continue
         elif f in tab["file"] and not args.force:
-            logger.debug("target mode but this file already processed and --force not enabled: %s", f)
+            logger.debug(
+                "target mode but this file already processed and --force not enabled: %s",
+                f,
+            )
             continue
 
     # at this point if the file is in the table, we need to remove it
     if f in tab["file"]:
         tab = tab[tab["file"] != f]
 
-    bpm = hdu["bpm"].data != 0
-    im = hdu["sci"].data + 0
+    bpm = hdul["bpm"].data != 0
+    im = hdul["sci"].data + 0
     # do not use gain, already in e-
     err = np.sqrt((im + h["BIASLVL"]) + h["RDNOISE"] ** 2)
 
-    if "cat" not in hdu:
+    if "cat" not in hdul:
         logger.exception("%s missing photometry catalog.", basename)
         skip.add_row((basename, "Missing photometry catalog"))
         skip.write("phot-skip.list", format="ascii.csv", overwrite=True)
         continue
 
-    phot = Table(hdu["cat"].data)
+    phot = Table(hdul["cat"].data)
+
+    # Get WCS, either from the replacements list or from the file
+    if f in wcs_replacements:
+        wcs = wcs_replacements.get(f)
+        
+        # replace catalog's ra and dec columns with the updated WCS
+        phot["ra"], phot["dec"] = np.array(
+            wcs.pixel_to_world_values(
+                u.Quantity((tab["ra"] * u.deg, tab["dec"] * u.deg)).T
+            )
+        ).T
+    else:
+        wcs = WCS(h)
+
     if "ra" not in phot.colnames:
         logger.error("Adding %s to skip file list: WCS probably missing.", basename)
         skip.add_row((basename, "WCS probably missing"))
@@ -239,7 +244,6 @@ for f in files:
     Tp = orb["Tp"].jd
 
     # target location
-    wcs = WCS(h)
     c = wcs.all_world2pix(
         eph["ra"] + offset[target]["ra"], eph["dec"] + offset[target]["dec"], 0
     )

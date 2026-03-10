@@ -130,19 +130,24 @@ for target, group in groupby(sorted(stacks.items()), key=grouper):
         hdu.append(fits.ImageHDU(med, name="baseline"))
         hdu.writeto(filtered_file, overwrite=True)
 
+        plt.close(1)
         fig = plt.figure(1, (6, 12 / 3), clear=True)
         tax = fig.add_axes((0, 0.5, 1, 0.5))
         bax = fig.add_axes((0, 0, 1, 0.5))
 
         mean, median, stdev = sigma_clipped_stats(nightly)
-        opts = {
-            "vmin": median,
-            "vmax": np.mean(
+        vmax = np.mean(
                 nightly[
                     int(h0["crpix2"]) - 6 : int(h0["crpix2"]) + 5,
                     int(h0["crpix1"]) - 6 : int(h0["crpix1"]) + 5,
                 ]
-            ),
+            )
+        if vmax < median:
+            vmax = median + stdev
+
+        opts = {
+            "vmin": median,
+            "vmax": vmax,
         }
 
         im = np.c_[nightly[cutout], med[cutout], diff[cutout]]
