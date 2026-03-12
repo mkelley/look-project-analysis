@@ -84,6 +84,7 @@ rename_target = {
     "144p": "144P",
     "144P/Kushida": "144P",
     "62p": "62P",
+    "63p": "63P",
     "3i": "3I",
     "3I/ATLAS": "3I",
     "3I/Atlas": "3I",
