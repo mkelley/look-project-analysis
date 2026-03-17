@@ -98,6 +98,7 @@ rename_target = {
     "P12hxMW": "P/2025 W4",
     "P21D3Eu": "C/2023 B1",
     "CA9MP42": "C/2024 E1",
+    "c/2026 A1": "C/2026 A1",
 }
 
 target_names = {
