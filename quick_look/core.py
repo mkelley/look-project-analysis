@@ -79,6 +79,7 @@ rename_target = {
     "364p": "364P",
     "12p": "12P",
     "12P/Pons-Brooks": "12P",
+    "29p": "29P",
     "chiron": "2060",
     "Chiron": "2060",
     "144p": "144P",
@@ -99,6 +100,7 @@ rename_target = {
     "P21D3Eu": "C/2023 B1",
     "CA9MP42": "C/2024 E1",
     "c/2026 A1": "C/2026 A1",
+    "6AC4721": "C/2026 A1",
 }
 
 target_names = {
