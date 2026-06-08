@@ -17,7 +17,7 @@ else:
     files = {}
 
 
-for f in glob("e91/202*/*.fits.fz"):
+for f in glob("e91/202*/*-e91.fits.fz"):
     if f in files:
         continue
 

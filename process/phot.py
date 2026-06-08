@@ -77,7 +77,7 @@ if not os.path.exists("backgrounds"):
     os.system("mkdir backgrounds")
 
 # skip_objects = ['C/2021 C4']  # not in horizons
-files = glob("e91/*/*fz")
+files = glob("e91/*/*-e91.fits.fz")
 if args.mode == "file" and len(args.sources) > 0:
     files = args.sources
     # validate input
@@ -187,7 +187,7 @@ for f in files:
     # Get WCS, either from the replacements list or from the file
     if f in wcs_replacements:
         wcs = wcs_replacements.get(f)
-        
+
         # replace catalog's ra and dec columns with the updated WCS
         phot["ra"], phot["dec"] = np.array(
             wcs.pixel_to_world_values(

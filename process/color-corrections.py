@@ -36,8 +36,9 @@ skip |= set([row["file"] for row in rows])
 
 rc2 = RefCat2("cat.db", min_matches=10)
 
-files = [fn for fn in glob("e91/*/*fz")
-         if os.path.basename(fn)[:-8] not in skip]
+files = [
+    fn for fn in glob("e91/*/*-e91.fits.fz") if os.path.basename(fn)[:-8] not in skip
+]
 
 for fn in files:
     basename = os.path.basename(fn)[:-8]
@@ -51,15 +52,12 @@ for fn in files:
     try:
         objids, distances = rc2.xmatch(lco)
     except TypeError:
-        row = {
-            "file": basename,
-            "n": 0
-        }
+        row = {"file": basename, "n": 0}
 
     m_inst = -2.5 * np.log10(phot["flux"])
     m_err = phot["fluxerr"] / phot["flux"] * 1.0857
     catfilt = filters.get(h["FILTER"])
- 
+
     try:
         zp, C, zp_unc, m, gmr, gmi = rc2.cal_color(
             objids, m_inst, catfilt, "g-r", mlim=[13, 18], gmi_lim=[0.2, 3.0]
@@ -80,10 +78,7 @@ for fn in files:
             "n": (~m.mask).sum(),
         }
     except Exception:
-        row = {
-            "file": basename,
-            "n": 0
-        }
+        row = {"file": basename, "n": 0}
     rows.append(row)
 
 cctab = Table(rows)
